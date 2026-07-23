@@ -5,8 +5,8 @@
 # * No Support For Encryption *
 
 # You can change to different versions
-ARG MONGO_MAJOR="7.0"
-ARG MONGO_VERSION="7.0.14"
+ARG MONGO_MAJOR="6.0"
+ARG MONGO_VERSION="6.0.29"
 ARG WT_BRANCH="mongodb-${MONGO_MAJOR}"
 
 FROM ubuntu:22.04 AS builder
@@ -75,18 +75,24 @@ RUN cmake -S /src/wiredtiger -B /src/wiredtiger/build \
 RUN cd /src && wget -q https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-${MONGO_VERSION}.tgz && \
     tar -zxvf mongodb-linux-x86_64-ubuntu2204-${MONGO_VERSION}.tgz && \
     cp mongodb-linux-x86_64-ubuntu2204-${MONGO_VERSION}/bin/mongod /usr/local/bin/mongod
+
+# --- Download MongoDB Shell (mongosh) - Hardcoded Version ---
+RUN cd /src && wget -q https://downloads.mongodb.com/compass/mongosh-2.3.8-linux-x64.tgz && \
+    tar -zxvf mongosh-2.3.8-linux-x64.tgz && \
+    cp mongosh-2.3.8-linux-x64/bin/mongosh /usr/local/bin/mongosh
+
 # --- Final slim image ---
 FROM ubuntu:22.04
 
-# mongod requires libcurl and openssl to run
+# mongod/mongosh require libcurl and openssl to run
 RUN apt-get update && apt-get install -y \
     ca-certificates libssl3 libcurl4 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy tools from builder
-# Notice we are copying 'wt' as 'wt-bin' here
 COPY --from=builder /usr/local/bin/wt /usr/local/bin/wt-bin
 COPY --from=builder /usr/local/bin/mongod /usr/local/bin/mongod
+COPY --from=builder /usr/local/bin/mongosh /usr/local/bin/mongosh
 COPY --from=builder /usr/local/lib /usr/local/lib
 
 RUN ldconfig
